@@ -163,12 +163,16 @@ private fun TopBar(
             .background(colors.bg)
             .statusBarsPadding()
     ) {
+        // Space between the two groups, like the web app's `.topbar-inner`: the
+        // switcher stays on the left edge and the account controls on the right,
+        // instead of both huddling at the start with the leftover width dumped
+        // on the right of a wide screen.
         Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             SpaceSwitcher(
                 labels = Spaces.order.map { tr("tab.${it.key}", it.fallbackName) },
@@ -177,18 +181,22 @@ private fun TopBar(
                 modifier = Modifier
                     // fill = false lets widthIn actually cap it on a wide screen.
                     .weight(1f, fill = false)
-                    .widthIn(max = 340.dp),
+                    .widthIn(max = 340.dp)
+                    .padding(end = 9.dp),
             )
 
-            Spacer(Modifier.weight(0.001f))
-
-            if (roomy) {
-                LangButton(state.lang, callbacks.toggleLang)
-                ThemeButton(state.dark, callbacks.toggleTheme)
-                AccountArea(state, callbacks, showLabel = true)
-            } else {
-                AccountArea(state, callbacks, showLabel = false)
-                OverflowMenu(state, callbacks)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                if (roomy) {
+                    LangButton(state.lang, callbacks.toggleLang)
+                    ThemeButton(state.dark, callbacks.toggleTheme)
+                    AccountArea(state, callbacks, showLabel = true)
+                } else {
+                    AccountArea(state, callbacks, showLabel = false)
+                    OverflowMenu(state, callbacks)
+                }
             }
         }
         HorizontalDivider(color = colors.border, thickness = 1.dp)
