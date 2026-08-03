@@ -37,6 +37,13 @@ enum class AuthError(val messageKey: String) {
     NO_ACCOUNT("err.auth.noAccount"),
     NOT_ALLOWED("err.auth.notAllowed"),
     CONFIGURATION("err.auth.config"),
+
+    /**
+     * The build has no Google client id at all — a different problem from being
+     * unregistered, and worth its own message: chasing SHA-1 fingerprints when
+     * the id was simply missing wastes a lot of time.
+     */
+    MISSING_CLIENT_ID("err.auth.noClientId"),
     GENERIC("err.auth.generic"),
 }
 
@@ -101,7 +108,7 @@ class AuthManager(context: Context) {
      */
     suspend fun signIn(activity: Activity): AuthError? {
         val instance = auth ?: return AuthError.CONFIGURATION
-        val clientId = webClientId ?: return AuthError.CONFIGURATION
+        val clientId = webClientId ?: return AuthError.MISSING_CLIENT_ID
 
         val request = GetCredentialRequest.Builder()
             .addCredentialOption(GetSignInWithGoogleOption.Builder(clientId).build())

@@ -98,11 +98,36 @@ A 512×512 Play Store icon is generated alongside the launcher icons; see
 
 | What you see | What it means |
 |---|---|
+| "This build has no Google client ID" | `app/google-services.json` is missing, or the `default_web_client_id` string it generates was stripped from the build. `app/src/main/res/raw/keep.xml` exists to stop the release resource shrinker removing it — don't delete it. |
 | "This app build isn't registered in Firebase yet" | The package name or SHA-1 in the console doesn't match this build. Check both, then re-download `google-services.json`. |
 | "Google sign-in isn't enabled in Firebase yet" | Step 3 above. |
 | "No Google account is available on this device" | Add a Google account in Android Settings. Emulators without Play Services can't do Google sign-in at all. |
 | "Couldn't load your data" | The Firestore rules aren't published, or there's no connection. Entries you already have stay readable from the cache. |
 | Sign-in works, but no entries appear | You signed in with a different Google account than the one used on the web. |
+
+## Checking a release build
+
+Release builds run R8 and the resource shrinker, so it's worth confirming the
+Google client ID actually survived into the APK:
+
+```bash
+$ANDROID_HOME/build-tools/*/aapt2 dump resources \
+  app/build/outputs/apk/release/app-release.apk | grep -c default_web_client_id
+```
+
+`1` means it's there. `0` means it was shrunk out and sign-in will fail with a
+configuration error that looks exactly like the app was never registered —
+check that `app/src/main/res/raw/keep.xml` is still present.
+
+Both the debug and release builds are signed with the same debug key by
+default, so one SHA-1 covers both. You can confirm what actually signed an APK
+with:
+
+```bash
+$ANDROID_HOME/build-tools/*/apksigner verify --print-certs <apk>
+```
+
+---
 
 ## Is `google-services.json` safe to commit?
 

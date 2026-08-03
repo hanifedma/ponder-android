@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The google-services plugin generates these strings from google-services.json,
+  and they are read by name at runtime (Resources.getIdentifier) rather than
+  through R.string.*, both by this app and inside the Firebase libraries.
+
+  The resource shrinker only sees static R.string references, so without this it
+  concludes they are unused and strips them from release builds. The symptom is
+  nasty: the app builds and runs, but Google sign-in fails with a configuration
+  error that looks exactly like the app was never registered in Firebase.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/default_web_client_id,
+                @string/google_app_id,
+                @string/google_api_key,
+                @string/gcm_defaultSenderId,
+                @string/project_id,
+                @string/google_storage_bucket,
+                @string/firebase_database_url,
+                @string/google_crash_reporting_api_key" />
