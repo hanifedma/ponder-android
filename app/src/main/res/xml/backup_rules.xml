@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below. Listing includes means everything else is left out,
+     so the device-only entries and settings are backed up while Firestore's
+     cache — which is rebuilt from the server on restore — is not. -->
+<full-backup-content>
+    <include domain="file" path="entries/" />
+    <include domain="sharedpref" path="ponder_prefs.xml" />
+</full-backup-content>

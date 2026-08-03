@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Same intent as backup_rules.xml: keep the on-device entries and
+     preferences; everything not listed here (including the rebuildable Firestore
+     cache) is left out automatically. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="entries/" />
+        <include domain="sharedpref" path="ponder_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="entries/" />
+        <include domain="sharedpref" path="ponder_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

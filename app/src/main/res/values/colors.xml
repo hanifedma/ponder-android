@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window/splash chrome only. The in-app palette lives in ui/theme/Color.kt. -->
+    <color name="brand_dark">#0F0F0F</color>
+    <color name="brand_light">#FFFFFF</color>
+    <color name="brand_green">#22C55E</color>
+</resources>

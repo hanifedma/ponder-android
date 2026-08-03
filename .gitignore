@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------- build output
+build/
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ------------------------------------------------------------------ Gradle/IDE
+.gradle/
+.kotlin/
+*.iml
+.idea/
+
+# Machine-specific: records wherever the Android SDK happens to live.
+local.properties
+
+# --------------------------------------------------------------------- signing
+# Never commit a signing key. Whoever holds it can publish an update that
+# Android accepts as genuinely yours.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# -------------------------------------------------------------------- Firebase
+# Ties the build to one Firebase project and to specific registered signing
+# certificates. It holds no secrets, but it is per-account configuration rather
+# than source — download your own from the console (see SETUP.md).
+google-services.json
+
+# ------------------------------------------------------------------------ misc
+.DS_Store
+*.log

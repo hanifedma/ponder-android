@@ -1,0 +1,7 @@
+<resources>
+    <!-- The launcher label. Everything else the user reads is translated in
+         app code (i18n/Strings.kt) so the in-app 🌐 toggle can switch the whole
+         interface instantly, exactly like the web app. -->
+    <string name="app_name">Ponder</string>
+    <string name="share_target_label">Save to Ponder</string>
+</resources>
