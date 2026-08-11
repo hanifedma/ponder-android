@@ -3,8 +3,22 @@ package com.hanifedma.ponder.core
 import com.hanifedma.ponder.data.Entry
 import com.hanifedma.ponder.data.Space
 
-/** The three orderings offered in the toolbar, matching the web app's `<select>`. */
-enum class SortOrder { NEWEST, OLDEST, BY_TAG }
+/**
+ * The three orderings offered in the toolbar, matching the web app's `<select>`.
+ *
+ * [key] is what gets written to preferences, and it is deliberately the same
+ * string the web app stores, so the two settings screens speak one vocabulary.
+ */
+enum class SortOrder(val key: String) {
+    NEWEST("desc"),
+    OLDEST("asc"),
+    BY_TAG("tag");
+
+    companion object {
+        /** Unknown or missing keys fall back to the app's own default. */
+        fun from(key: String?): SortOrder = entries.firstOrNull { it.key == key } ?: NEWEST
+    }
+}
 
 /**
  * How the visible list is derived from everything in the current space: a

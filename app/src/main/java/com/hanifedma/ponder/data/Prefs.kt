@@ -1,6 +1,7 @@
 package com.hanifedma.ponder.data
 
 import android.content.Context
+import com.hanifedma.ponder.core.SortOrder
 import com.hanifedma.ponder.i18n.Lang
 
 /**
@@ -21,9 +22,34 @@ class Prefs(context: Context) {
         get() = Lang.from(sp.getString(KEY_LANG, null))
         set(value) = sp.edit().putString(KEY_LANG, value.code).apply()
 
+    /** Whichever space was open last; kept up to date on every switch. */
     var activeSpaceKey: String
         get() = sp.getString(KEY_SPACE, Spaces.PONDER.key) ?: Spaces.PONDER.key
         set(value) = sp.edit().putString(KEY_SPACE, value).apply()
+
+    /**
+     * Which space a fresh launch opens: a space key, or [STARTUP_LAST] to carry
+     * on from wherever the last session left off (the default).
+     */
+    var startupSpaceKey: String
+        get() = sp.getString(KEY_STARTUP_SPACE, STARTUP_LAST) ?: STARTUP_LAST
+        set(value) = sp.edit().putString(KEY_STARTUP_SPACE, value).apply()
+
+    /**
+     * The space to open on launch, with [STARTUP_LAST] resolved. An unrecognised
+     * key — a space that no longer exists — falls back to Ponder rather than
+     * leaving the app with nothing to show.
+     */
+    val initialSpace: Space
+        get() = when (val choice = startupSpaceKey) {
+            STARTUP_LAST -> Spaces.byKey(activeSpaceKey)
+            else -> Spaces.byKey(choice)
+        }
+
+    /** The ordering the list starts in, both on launch and after a space switch. */
+    var defaultSort: SortOrder
+        get() = SortOrder.from(sp.getString(KEY_DEFAULT_SORT, null))
+        set(value) = sp.edit().putString(KEY_DEFAULT_SORT, value.key).apply()
 
     /**
      * Set once the user picks "use on this device without an account", so
@@ -44,11 +70,16 @@ class Prefs(context: Context) {
         sp.edit().putBoolean(KEY_MIGRATED_PREFIX + uid, true).apply()
     }
 
-    private companion object {
-        const val KEY_THEME = "theme"
-        const val KEY_LANG = "lang"
-        const val KEY_SPACE = "active_space"
-        const val KEY_LOCAL_MODE = "prefers_local_mode"
-        const val KEY_MIGRATED_PREFIX = "migration_offered_"
+    companion object {
+        /** [startupSpaceKey] value meaning "carry on from the last session". */
+        const val STARTUP_LAST = "last"
+
+        private const val KEY_THEME = "theme"
+        private const val KEY_LANG = "lang"
+        private const val KEY_SPACE = "active_space"
+        private const val KEY_STARTUP_SPACE = "startup_space"
+        private const val KEY_DEFAULT_SORT = "default_sort"
+        private const val KEY_LOCAL_MODE = "prefers_local_mode"
+        private const val KEY_MIGRATED_PREFIX = "migration_offered_"
     }
 }

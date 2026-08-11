@@ -69,6 +69,11 @@ data class PonderUiState(
     val search: String = "",
     val sort: SortOrder = SortOrder.NEWEST,
     val badge: Badge? = null,
+    /** Space key the app opens on, or [Prefs.STARTUP_LAST]. */
+    val startupSpaceKey: String = Prefs.STARTUP_LAST,
+    /** Ordering the list starts in, on launch and after a space switch. */
+    val defaultSort: SortOrder = SortOrder.NEWEST,
+    val settingsOpen: Boolean = false,
     val composer: ComposerState = ComposerState(),
     val busyMessage: String? = null,
     val duplicateConfirm: List<Similarity.Match>? = null,
@@ -112,13 +117,20 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
         if (auth.isAvailable) runCatching { FirebaseFirestore.getInstance() }.getOrNull() else null
 
     private val _state = MutableStateFlow(
-        PonderUiState(
-            space = Spaces.byKey(prefs.activeSpaceKey),
-            lang = prefs.lang,
-            dark = prefs.darkTheme,
-            firebaseAvailable = auth.isAvailable,
-            composer = ComposerState(tag = Spaces.byKey(prefs.activeSpaceKey).defaultTag),
-        )
+        // Read once: which space to open, and the ordering it opens in, both
+        // come straight from the person's settings.
+        prefs.initialSpace.let { startupSpace ->
+            PonderUiState(
+                space = startupSpace,
+                lang = prefs.lang,
+                dark = prefs.darkTheme,
+                firebaseAvailable = auth.isAvailable,
+                sort = prefs.defaultSort,
+                startupSpaceKey = prefs.startupSpaceKey,
+                defaultSort = prefs.defaultSort,
+                composer = ComposerState(tag = startupSpace.defaultTag),
+            )
+        }
     )
     val state: StateFlow<PonderUiState> = _state.asStateFlow()
 
@@ -136,6 +148,9 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
     private val tr: Tr get() = Tr(_state.value.lang)
 
     init {
+        // Opening a space counts as using it, so "last used" stays truthful even
+        // when the startup setting pins a particular one.
+        prefs.activeSpaceKey = _state.value.space.key
         viewModelScope.launch {
             network.observe().collect { isOnline ->
                 online = isOnline
@@ -301,15 +316,43 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
     fun switchSpace(space: Space) {
         if (space.key == _state.value.space.key) return
         prefs.activeSpaceKey = space.key
-        // Per-space view state resets, exactly like the web app.
+        // Per-space view state resets, exactly like the web app — back to the
+        // chosen default ordering rather than always to newest-first.
         _state.value = _state.value.copy(
             space = space,
             search = "",
-            sort = SortOrder.NEWEST,
+            sort = _state.value.defaultSort,
             composer = _state.value.composer.copy(tag = space.defaultTag),
             duplicateConfirm = null,
         )
         syncStore()
+    }
+
+    // ------------------------------------------------------------- settings
+
+    fun openSettings() {
+        _state.value = _state.value.copy(settingsOpen = true)
+    }
+
+    fun closeSettings() {
+        _state.value = _state.value.copy(settingsOpen = false)
+    }
+
+    /** [key] is a space key, or [Prefs.STARTUP_LAST] for "wherever I left off". */
+    fun setStartupSpace(key: String) {
+        prefs.startupSpaceKey = key
+        _state.value = _state.value.copy(startupSpaceKey = key)
+    }
+
+    /**
+     * Changing the default also re-sorts what is on screen, so the choice can be
+     * seen straight away instead of only on the next launch.
+     */
+    fun setDefaultSort(sort: SortOrder) {
+        prefs.defaultSort = sort
+        _state.value = _state.value
+            .copy(defaultSort = sort, sort = sort)
+            .withRecomputedList()
     }
 
     fun toggleTheme() {

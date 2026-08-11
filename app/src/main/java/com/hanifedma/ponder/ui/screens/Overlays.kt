@@ -43,8 +43,11 @@ import androidx.compose.ui.unit.sp
 import com.hanifedma.ponder.core.DateFmt
 import com.hanifedma.ponder.core.Embeds
 import com.hanifedma.ponder.core.Similarity
+import com.hanifedma.ponder.core.SortOrder
 import com.hanifedma.ponder.data.Entry
+import com.hanifedma.ponder.data.Prefs
 import com.hanifedma.ponder.data.Space
+import com.hanifedma.ponder.data.Spaces
 import com.hanifedma.ponder.ui.ShuffleState
 import com.hanifedma.ponder.ui.components.ButtonVariant
 import com.hanifedma.ponder.ui.components.EntryFooter
@@ -402,6 +405,94 @@ fun DuplicateConfirmDialog(
             }
         },
     )
+}
+
+/**
+ * The two things worth remembering between launches: which space to open, and
+ * the ordering entries are listed in. Both take effect immediately — the sort
+ * re-orders the list behind the dialog — so the choice can be seen, not guessed.
+ */
+@Composable
+fun SettingsDialog(
+    startupSpaceKey: String,
+    defaultSort: SortOrder,
+    onSetStartupSpace: (String) -> Unit,
+    onSetDefaultSort: (SortOrder) -> Unit,
+    onClose: () -> Unit,
+) {
+    val colors = PonderTheme.colors
+    val tr = PonderTheme.tr
+
+    // "Last one I used" sits at the top, then the spaces in nav order.
+    val spaceOptions = remember { listOf(Prefs.STARTUP_LAST) + Spaces.order.map { it.key } }
+
+    AlertDialog(
+        onDismissRequest = onClose,
+        containerColor = colors.elevated,
+        titleContentColor = colors.text,
+        textContentColor = colors.muted,
+        title = { Text(tr("settings.title"), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                SettingRow(
+                    label = tr("settings.startSpace"),
+                    hint = tr("settings.startSpace.hint"),
+                ) {
+                    PonderSelect(
+                        selected = startupSpaceKey,
+                        options = spaceOptions,
+                        labelOf = { key ->
+                            if (key == Prefs.STARTUP_LAST) {
+                                tr("settings.startSpace.last")
+                            } else {
+                                tr("tab.$key", Spaces.byKey(key).fallbackName)
+                            }
+                        },
+                        onSelect = onSetStartupSpace,
+                        contentDescription = tr("settings.startSpace"),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                SettingRow(
+                    label = tr("settings.sort"),
+                    hint = tr("settings.sort.hint"),
+                ) {
+                    PonderSelect(
+                        selected = defaultSort,
+                        options = listOf(SortOrder.NEWEST, SortOrder.OLDEST, SortOrder.BY_TAG),
+                        labelOf = {
+                            when (it) {
+                                SortOrder.NEWEST -> tr("sort.newest")
+                                SortOrder.OLDEST -> tr("sort.oldest")
+                                SortOrder.BY_TAG -> tr("sort.tag")
+                            }
+                        },
+                        onSelect = onSetDefaultSort,
+                        contentDescription = tr("settings.sort"),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onClose) {
+                Text(tr("settings.close"), color = colors.accent, fontWeight = FontWeight.SemiBold)
+            }
+        },
+    )
+}
+
+@Composable
+private fun SettingRow(label: String, hint: String, control: @Composable () -> Unit) {
+    val colors = PonderTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(label, color = colors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(hint, color = colors.faint, fontSize = 12.5.sp, lineHeight = 18.sp)
+        control()
+    }
 }
 
 /** Offers to move on-device entries into a freshly signed-in account. */

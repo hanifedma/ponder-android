@@ -17,6 +17,18 @@ you add on the phone shows up in the browser.
 
 ---
 
+## What it looks like
+
+| ❝ Ponder | ⚙️ Settings | 🌿 Opens on Healthy Tips |
+|---|---|---|
+| <img src="docs/screenshots/home.png" width="250" alt="The Ponder space: composer, search and sort toolbar, and a list of quote cards with coloured tag badges" /> | <img src="docs/screenshots/settings.png" width="250" alt="The Settings dialog with two dropdowns: Open on start, and Default sort" /> | <img src="docs/screenshots/health.png" width="250" alt="The app opening straight into Healthy Tips, sorted by tag" /> |
+
+| 🔀 Shuffle | ☀️ Light | 📐 Tablet |
+|---|---|---|
+| <img src="docs/screenshots/shuffle.png" width="250" alt="Shuffle view showing one random entry on a card" /> | <img src="docs/screenshots/light.png" width="250" alt="The same screen in the light theme" /> | <img src="docs/screenshots/tablet.png" width="250" alt="Tablet layout with the composer and filters in their own left pane" /> |
+
+---
+
 ## What it does
 
 Everything the web app does:
@@ -38,6 +50,9 @@ Everything the web app does:
 - **English / Korean**, switched instantly. Only the interface is translated —
   your entries are never touched.
 - **Dark / light**, dark by default.
+- **⚙️ Settings** — pick which space the app opens on (Ponder, Healthy Tips, or
+  whichever you used last) and which ordering a space opens in. Both are
+  remembered between launches; changing the sort re-orders the list right away.
 - **Offline-first.** Firestore's on-device cache means it opens instantly and
   keeps working with little or no connectivity; a pill tells you when you're
   seeing a cached copy.
@@ -68,6 +83,26 @@ Plus things that only make sense on a phone:
 Requires the Android SDK with API 37 installed. Gradle downloads its own JDK 21,
 so no local JDK setup is needed.
 
+### Putting it on your own phone
+
+With the phone plugged in over USB and **Developer options → USB debugging** on:
+
+```bash
+adb devices                # accept the "Allow USB debugging?" prompt on the phone
+./gradlew installDebug     # builds and installs straight onto it
+```
+
+No cable? Build the APK and copy it across instead:
+
+```bash
+./gradlew assembleRelease  # app/build/outputs/apk/release/app-release.apk
+```
+
+Send that file to the phone however you like and open it; Android will ask once
+for permission to install apps from that source. Both builds are signed with the
+same debug key, so installing one over the other keeps your entries — switching
+between them would not.
+
 ---
 
 ## How it's put together
@@ -87,7 +122,7 @@ app/src/main/java/com/hanifedma/ponder/
 │   ├── EntryStore.kt          one interface over both backends
 │   ├── CloudStore.kt          Firestore — the same documents as the web app
 │   ├── LocalStore.kt          device-only JSON store, atomic writes
-│   ├── Prefs.kt               theme / language / active space
+│   ├── Prefs.kt               theme / language / active space / startup + sort defaults
 │   └── NetworkMonitor.kt      drives the "offline" pill
 ├── auth/AuthManager.kt      Credential Manager → Firebase Auth
 ├── pdf/PdfExporter.kt       A4 export with pagination and thumbnails

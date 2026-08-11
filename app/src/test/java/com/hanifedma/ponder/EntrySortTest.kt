@@ -80,6 +80,29 @@ class EntrySortTest {
         assertEquals(listOf("a", "b", "c"), sorted.map { it.id })
     }
 
+    // ------------------------------------------------------- persisted keys
+
+    @Test
+    fun `sort orders round-trip through their stored keys`() {
+        for (order in SortOrder.entries) {
+            assertEquals(order, SortOrder.from(order.key))
+        }
+    }
+
+    @Test
+    fun `stored keys are the ones the web app writes`() {
+        assertEquals("desc", SortOrder.NEWEST.key)
+        assertEquals("asc", SortOrder.OLDEST.key)
+        assertEquals("tag", SortOrder.BY_TAG.key)
+    }
+
+    @Test
+    fun `an unset or unrecognised sort key falls back to newest first`() {
+        assertEquals(SortOrder.NEWEST, SortOrder.from(null))
+        assertEquals(SortOrder.NEWEST, SortOrder.from(""))
+        assertEquals(SortOrder.NEWEST, SortOrder.from("sideways"))
+    }
+
     // ---------------------------------------------------------------- search
 
     @Test

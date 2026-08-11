@@ -17,6 +17,7 @@ object HomeCallbacksFactory {
         switchSpace = viewModel::switchSpace,
         toggleLang = viewModel::toggleLang,
         toggleTheme = viewModel::toggleTheme,
+        openSettings = viewModel::openSettings,
         // Credential Manager needs a real Activity to show the account picker.
         signIn = { activity?.let(viewModel::signIn) },
         signOut = viewModel::signOut,

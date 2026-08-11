@@ -46,6 +46,7 @@ import com.hanifedma.ponder.ui.screens.DuplicatesOverlay
 import com.hanifedma.ponder.ui.screens.HomeScreen
 import com.hanifedma.ponder.ui.screens.LoginScreen
 import com.hanifedma.ponder.ui.screens.MigrationDialog
+import com.hanifedma.ponder.ui.screens.SettingsDialog
 import com.hanifedma.ponder.ui.screens.ShuffleOverlay
 import com.hanifedma.ponder.ui.theme.PonderTheme
 import kotlinx.coroutines.launch
@@ -205,6 +206,16 @@ private fun PonderRoot(viewModel: PonderViewModel) {
                     onCancel = viewModel::dismissDuplicateConfirm,
                     onAddAnyway = viewModel::confirmAddAnyway,
                     onOpenUrl = openUrl,
+                )
+            }
+
+            if (state.settingsOpen) {
+                SettingsDialog(
+                    startupSpaceKey = state.startupSpaceKey,
+                    defaultSort = state.defaultSort,
+                    onSetStartupSpace = viewModel::setStartupSpace,
+                    onSetDefaultSort = viewModel::setDefaultSort,
+                    onClose = viewModel::closeSettings,
                 )
             }
 

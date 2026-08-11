@@ -87,6 +87,7 @@ data class HomeCallbacks(
     val switchSpace: (Space) -> Unit,
     val toggleLang: () -> Unit,
     val toggleTheme: () -> Unit,
+    val openSettings: () -> Unit,
     val signIn: () -> Unit,
     val signOut: () -> Unit,
     val setSearch: (String) -> Unit,
@@ -190,6 +191,12 @@ private fun TopBar(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 if (roomy) {
+                    PonderIconButton(
+                        icon = PonderIcons.Settings,
+                        contentDescription = tr("settings.open"),
+                        onClick = callbacks.openSettings,
+                        bordered = true,
+                    )
                     LangButton(state.lang, callbacks.toggleLang)
                     ThemeButton(state.dark, callbacks.toggleTheme)
                     AccountArea(state, callbacks, showLabel = true)
@@ -363,7 +370,7 @@ private fun OverflowMenu(state: PonderUiState, callbacks: HomeCallbacks) {
     Box {
         PonderIconButton(
             icon = PonderIcons.MoreVert,
-            contentDescription = tr("aria.sort"),
+            contentDescription = tr("aria.more"),
             onClick = { expanded = true },
             tint = colors.muted,
         )
@@ -372,6 +379,16 @@ private fun OverflowMenu(state: PonderUiState, callbacks: HomeCallbacks) {
             onDismissRequest = { expanded = false },
             containerColor = colors.elevated,
         ) {
+            DropdownMenuItem(
+                text = { Text(tr("settings.title"), color = colors.text) },
+                leadingIcon = {
+                    Icon(PonderIcons.Settings, null, tint = colors.muted, modifier = Modifier.size(20.dp))
+                },
+                onClick = {
+                    expanded = false
+                    callbacks.openSettings()
+                },
+            )
             DropdownMenuItem(
                 text = { Text("${tr("lang.title")} · ${state.lang.label}", color = colors.text) },
                 leadingIcon = {
