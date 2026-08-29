@@ -4,6 +4,24 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- A thought sits in the notification shade; swiping it away brings up the
+         next one. Android 13+ asks the user before the first one can be shown. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- A notification does not survive a reboot, so it has to be put back. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- The optional keep-alive service (Settings → Keep running in background):
+         it is what makes the thought survive a swipe out of recent apps on
+         phones that kill the process outright. specialUse is the honest type —
+         nothing here is a media, location or data-sync workload. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Lets Settings offer the one-tap "don't put Ponder to sleep" dialog. The
+         app only ever asks; the exemption is granted by the person, not taken. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <application
         android:name=".PonderApp"
         android:allowBackup="true"
@@ -40,6 +58,42 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Keeps Ponder alive so the thought comes back after a reboot and
+             survives a swipe out of recents. stopWithTask="false" is what makes
+             the swipe deliver onTaskRemoved instead of simply ending the
+             service. It is a safety net only: the notification and its dismissal
+             loop work with this service off, blocked or killed. -->
+        <service
+            android:name=".notify.ThoughtService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps one of the user's own saved quotes in the notification shade and replaces it the moment it is dismissed." />
+        </service>
+
+        <!-- Reached only through the notification's own delete PendingIntent, so
+             it needs no intent filter and stays unexported. -->
+        <receiver
+            android:name=".notify.ThoughtReceiver"
+            android:exported="false" />
+
+        <!-- Exported because that is the only way to be handed BOOT_COMPLETED.
+             Every action below is a protected broadcast — the system is the only
+             sender there is. -->
+        <receiver
+            android:name=".notify.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

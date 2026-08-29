@@ -23,6 +23,10 @@ import com.hanifedma.ponder.data.Space
 import com.hanifedma.ponder.data.Spaces
 import com.hanifedma.ponder.i18n.Lang
 import com.hanifedma.ponder.i18n.Tr
+import com.hanifedma.ponder.notify.BatteryPolicy
+import com.hanifedma.ponder.notify.Notifications
+import com.hanifedma.ponder.notify.ThoughtNotifier
+import com.hanifedma.ponder.notify.ThoughtPool
 import com.hanifedma.ponder.pdf.PdfExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,6 +77,18 @@ data class PonderUiState(
     val startupSpaceKey: String = Prefs.STARTUP_LAST,
     /** Ordering the list starts in, on launch and after a space switch. */
     val defaultSort: SortOrder = SortOrder.NEWEST,
+    /** Whether a thought is kept in the notification shade. */
+    val notifyEnabled: Boolean = true,
+    /** Space the notification draws from, or [ThoughtPool.ALL_SPACES]. */
+    val notifySpaceKey: String = ThoughtPool.ALL_SPACES,
+    /** Whether the keep-alive foreground service is wanted. */
+    val keepAlive: Boolean = true,
+    /** Android itself is refusing Ponder's notifications; the toggle is moot. */
+    val notifyBlocked: Boolean = false,
+    /** How many entries the notification currently has to choose between. */
+    val notifyPoolCount: Int = 0,
+    /** Android will not put Ponder to sleep to save battery. */
+    val batteryUnrestricted: Boolean = true,
     val settingsOpen: Boolean = false,
     val composer: ComposerState = ComposerState(),
     val busyMessage: String? = null,
@@ -128,6 +144,9 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
                 sort = prefs.defaultSort,
                 startupSpaceKey = prefs.startupSpaceKey,
                 defaultSort = prefs.defaultSort,
+                notifyEnabled = prefs.notificationsEnabled,
+                notifySpaceKey = prefs.notifySpaceKey,
+                keepAlive = prefs.keepAlive,
                 composer = ComposerState(tag = startupSpace.defaultTag),
             )
         }
@@ -142,6 +161,13 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Identifies the (mode, account, space) triple the active store belongs to. */
     private var activeStoreKey: String? = null
+
+    /**
+     * Just the (mode, account) half of it. When this changes the notification
+     * pool is thrown away, so a thought from a signed-out account can never
+     * linger in the shade of the next one.
+     */
+    private var activeAccountKey: String? = null
 
     private var online: Boolean = true
 
@@ -229,8 +255,16 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
     private fun syncStore() {
         val s = _state.value
         val uid = s.user?.uid
-        val key = "${s.mode}:${uid ?: "-"}:${s.space.key}"
+        val accountKey = "${s.mode}:${uid ?: "-"}"
+        val key = "$accountKey:${s.space.key}"
         if (key == activeStoreKey && storeJob?.isActive == true) return
+
+        // Signing in, signing out, or switching account: whatever the shade is
+        // showing came from a store this session is no longer reading.
+        if (activeAccountKey != null && activeAccountKey != accountKey) {
+            Notifications.resetPool(getApplication())
+        }
+        activeAccountKey = accountKey
 
         storeJob?.cancel()
         activeStoreKey = key
@@ -260,6 +294,10 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
+        // Captured, not read from state later: this job is cancelled the moment
+        // the space changes, so it must only ever write its own space's pool.
+        val poolSpaceKey = s.space.key
+
         storeJob = viewModelScope.launch {
             store.observe().collect { snapshot ->
                 val badge = when {
@@ -275,6 +313,12 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
                     )
                     .withRecomputedList()
                     .withPrunedOverlays()
+                // Keep the pool the background notification draws from in step
+                // with what the app itself is showing. The `loading` snapshot
+                // carries a placeholder empty list, which would wipe it.
+                if (!snapshot.loading) {
+                    Notifications.updatePool(getApplication(), poolSpaceKey, snapshot.entries)
+                }
                 if (snapshot.error) emit(UiEvent.Snack(tr("err.load"), long = true))
             }
         }
@@ -332,6 +376,7 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openSettings() {
         _state.value = _state.value.copy(settingsOpen = true)
+        refreshNotifyStatus()
     }
 
     fun closeSettings() {
@@ -355,6 +400,81 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
             .withRecomputedList()
     }
 
+    // ------------------------------------------------------- notifications
+
+    /**
+     * Re-reads the things only the system can answer — whether notifications are
+     * allowed, whether the battery saver is holding Ponder back, and how many
+     * entries the shade currently has to pick from. Cheap, but it touches a file,
+     * so it never runs on the main thread.
+     */
+    fun refreshNotifyStatus() {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            val blocked = withContext(Dispatchers.IO) { !ThoughtNotifier.canPost(app) }
+            val battery = withContext(Dispatchers.IO) { BatteryPolicy.isUnrestricted(app) }
+            val count = withContext(Dispatchers.IO) {
+                ThoughtPool(app).count(prefs.notifySpaceKey)
+            }
+            _state.value = _state.value.copy(
+                notifyBlocked = blocked,
+                batteryUnrestricted = battery,
+                notifyPoolCount = count,
+            )
+        }
+    }
+
+    /**
+     * Called every time the app comes to the foreground. This is the one moment
+     * Android reliably permits starting the keep-alive service, so it is also
+     * where a service killed while the app was away gets brought back.
+     */
+    fun onAppForeground() {
+        Notifications.apply(getApplication(), allowServiceStart = true)
+        refreshNotifyStatus()
+    }
+
+    /**
+     * True the first time the app runs with notifications switched on. Asked
+     * once and once only — a "no" is a decision, and re-prompting every launch
+     * would make it one the person has to keep making.
+     */
+    fun shouldAskNotificationPermission(): Boolean =
+        prefs.notificationsEnabled && !prefs.notifyPermissionAsked
+
+    fun onNotificationPermissionAsked() {
+        prefs.notifyPermissionAsked = true
+    }
+
+    /** Whatever the answer, act on it: post the first thought, or stand down. */
+    fun onNotificationPermissionResult() {
+        Notifications.apply(getApplication(), allowServiceStart = true)
+        refreshNotifyStatus()
+    }
+
+    fun setNotifyEnabled(enabled: Boolean) {
+        prefs.notificationsEnabled = enabled
+        _state.value = _state.value.copy(notifyEnabled = enabled)
+        Notifications.apply(getApplication(), allowServiceStart = true)
+        refreshNotifyStatus()
+    }
+
+    /** [key] is a space key, or [ThoughtPool.ALL_SPACES]. */
+    fun setNotifySpace(key: String) {
+        prefs.notifySpaceKey = key
+        _state.value = _state.value.copy(notifySpaceKey = key)
+        // Redraw rather than merely ensure: if the thought on screen came from a
+        // space this no longer includes, it has to be replaced now.
+        Notifications.refresh(getApplication())
+        refreshNotifyStatus()
+    }
+
+    fun setKeepAlive(enabled: Boolean) {
+        prefs.keepAlive = enabled
+        _state.value = _state.value.copy(keepAlive = enabled)
+        Notifications.apply(getApplication(), allowServiceStart = true)
+    }
+
     fun toggleTheme() {
         val dark = !_state.value.dark
         prefs.darkTheme = dark
@@ -365,6 +485,9 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
         val next = if (_state.value.lang == Lang.EN) Lang.KO else Lang.EN
         prefs.lang = next
         _state.value = _state.value.copy(lang = next)
+        // The entry itself is never translated, but the section name and tag
+        // around it are — redraw so the shade doesn't stay in the old language.
+        Notifications.refresh(getApplication())
     }
 
     fun setComposerText(value: String) {
@@ -550,13 +673,10 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
         }
         val next = when {
             pool.isEmpty() -> null
-            pool.size == 1 -> pool[0]
-            else -> {
-                // Never show the same entry twice in a row.
-                var candidate = pool.random()
-                while (candidate.id == shuffle.currentId) candidate = pool.random()
-                candidate
-            }
+            // Never show the same entry twice in a row. Excluding the current one
+            // up front keeps this bounded, where re-rolling until it differs can
+            // spin for a long time on a pool of two.
+            else -> pool.filterNot { it.id == shuffle.currentId }.ifEmpty { pool }.random()
         }
         _state.value = s.copy(shuffle = shuffle.copy(currentId = next?.id))
     }

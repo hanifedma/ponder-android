@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +51,7 @@ import com.hanifedma.ponder.data.Entry
 import com.hanifedma.ponder.data.Prefs
 import com.hanifedma.ponder.data.Space
 import com.hanifedma.ponder.data.Spaces
+import com.hanifedma.ponder.notify.ThoughtPool
 import com.hanifedma.ponder.ui.ShuffleState
 import com.hanifedma.ponder.ui.components.ButtonVariant
 import com.hanifedma.ponder.ui.components.EntryFooter
@@ -408,16 +412,29 @@ fun DuplicateConfirmDialog(
 }
 
 /**
- * The two things worth remembering between launches: which space to open, and
- * the ordering entries are listed in. Both take effect immediately — the sort
- * re-orders the list behind the dialog — so the choice can be seen, not guessed.
+ * Everything worth remembering between launches: which space to open, the
+ * ordering entries are listed in, and the thought Ponder keeps in the
+ * notification shade. Every choice takes effect immediately — the sort re-orders
+ * the list behind the dialog, the notification redraws — so it can be seen
+ * rather than guessed.
  */
 @Composable
 fun SettingsDialog(
     startupSpaceKey: String,
     defaultSort: SortOrder,
+    notifyEnabled: Boolean,
+    notifySpaceKey: String,
+    keepAlive: Boolean,
+    notifyBlocked: Boolean,
+    notifyPoolCount: Int,
+    batteryUnrestricted: Boolean,
     onSetStartupSpace: (String) -> Unit,
     onSetDefaultSort: (SortOrder) -> Unit,
+    onSetNotifyEnabled: (Boolean) -> Unit,
+    onSetNotifySpace: (String) -> Unit,
+    onSetKeepAlive: (Boolean) -> Unit,
+    onOpenNotificationSettings: () -> Unit,
+    onAllowBackground: () -> Unit,
     onClose: () -> Unit,
 ) {
     val colors = PonderTheme.colors
@@ -434,7 +451,9 @@ fun SettingsDialog(
         title = { Text(tr("settings.title"), fontWeight = FontWeight.Bold) },
         text = {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
+                Modifier
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 SettingRow(
@@ -475,6 +494,76 @@ fun SettingsDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+
+                SettingDivider()
+
+                SettingToggleRow(
+                    label = tr("settings.notify"),
+                    hint = tr("settings.notify.hint"),
+                    checked = notifyEnabled,
+                    onCheckedChange = onSetNotifyEnabled,
+                )
+
+                if (notifyEnabled) {
+                    if (notifyBlocked) {
+                        // The in-app toggle is on but Android is refusing, which
+                        // is only fixable in system settings — so say so, and go
+                        // straight there rather than leaving it looking broken.
+                        SettingNote(tr("settings.notify.blocked"))
+                        PonderButton(
+                            text = tr("settings.notify.open"),
+                            onClick = onOpenNotificationSettings,
+                            variant = ButtonVariant.GHOST,
+                        )
+                    } else {
+                        SettingRow(
+                            label = tr("settings.notify.source"),
+                            hint = tr("settings.notify.source.hint"),
+                        ) {
+                            PonderSelect(
+                                selected = notifySpaceKey,
+                                options = ThoughtPool.spaceFilterOptions,
+                                labelOf = { key ->
+                                    if (key == ThoughtPool.ALL_SPACES) {
+                                        tr("settings.notify.source.all")
+                                    } else {
+                                        tr("tab.$key", Spaces.byKey(key).fallbackName)
+                                    }
+                                },
+                                onSelect = onSetNotifySpace,
+                                contentDescription = tr("settings.notify.source"),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (notifyPoolCount == 0) SettingNote(tr("settings.notify.empty"))
+
+                        SettingToggleRow(
+                            label = tr("settings.keepAlive"),
+                            hint = tr("settings.keepAlive.hint"),
+                            checked = keepAlive,
+                            onCheckedChange = onSetKeepAlive,
+                        )
+
+                        SettingRow(
+                            label = tr("settings.battery"),
+                            hint = tr("settings.battery.hint"),
+                        ) {
+                            if (batteryUnrestricted) {
+                                Text(
+                                    text = tr("settings.battery.ok"),
+                                    color = colors.accent,
+                                    fontSize = 13.sp,
+                                )
+                            } else {
+                                PonderButton(
+                                    text = tr("settings.battery.ask"),
+                                    onClick = onAllowBackground,
+                                    variant = ButtonVariant.GHOST,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -493,6 +582,60 @@ private fun SettingRow(label: String, hint: String, control: @Composable () -> U
         Text(hint, color = colors.faint, fontSize = 12.5.sp, lineHeight = 18.sp)
         control()
     }
+}
+
+/** A setting that is simply on or off, with the switch beside its label. */
+@Composable
+private fun SettingToggleRow(
+    label: String,
+    hint: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val colors = PonderTheme.colors
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(
+            Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text(label, color = colors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(hint, color = colors.faint, fontSize = 12.5.sp, lineHeight = 18.sp)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = colors.bg,
+                checkedTrackColor = colors.accent,
+                checkedBorderColor = colors.accent,
+                uncheckedThumbColor = colors.muted,
+                uncheckedTrackColor = colors.surface2,
+                uncheckedBorderColor = colors.border,
+            ),
+        )
+    }
+}
+
+/** A line of explanation that belongs to the section above it, not a control. */
+@Composable
+private fun SettingNote(text: String) {
+    val colors = PonderTheme.colors
+    Text(text, color = colors.muted, fontSize = 12.5.sp, lineHeight = 18.sp)
+}
+
+@Composable
+private fun SettingDivider() {
+    val colors = PonderTheme.colors
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(colors.border)
+    )
 }
 
 /** Offers to move on-device entries into a freshly signed-in account. */

@@ -30,15 +30,22 @@ Until then the app runs in device-only mode and shows a note saying so.
    com.hanifedma.ponder
    ```
 
-4. **Debug signing certificate SHA-1** — paste the fingerprint of the debug
-   keystore on this machine:
+4. **SHA-1 certificate fingerprint** — Google only issues a sign-in token to a
+   build signed by a certificate you have registered, so **add both** of these.
+   One app entry can hold as many fingerprints as you like ("Add fingerprint").
 
-   ```
-   3D:29:58:C6:75:80:7A:A5:49:1F:A4:D2:56:1F:FB:8B:BB:2B:0D:A6
-   ```
+   | Which build | SHA-1 |
+   |---|---|
+   | **Release** (`assembleRelease`, the APK you install on your phone) | `BE:9E:69:9A:26:A0:DF:3D:41:38:98:D0:37:F3:0C:94:6E:83:16:F8` |
+   | **Debug** (`installDebug`, from Android Studio) | `3D:29:58:C6:75:80:7A:A5:49:1F:A4:D2:56:1F:FB:8B:BB:2B:0D:A6` |
 
-   > Building on a different computer later? Get that machine's fingerprint with
-   > `./gradlew signingReport` and add it as an extra SHA-1 on the same app.
+   The release fingerprint belongs to `ponder-release.jks` — see
+   [Your release signing key](#your-release-signing-key) below.
+
+   > Building on a different computer later? Its *debug* key is different again.
+   > Get that machine's fingerprint with `./gradlew signingReport` and add it as
+   > an extra SHA-1 on the same app. The release key is a file, so it travels
+   > with you and its fingerprint never changes.
 
 5. **Register app** → **Download `google-services.json`**.
 
@@ -75,22 +82,88 @@ thoughts and healthy tips are all there.
 
 ---
 
-## Releasing to the Play Store
+## Your release signing key
 
-The release build is signed with the **debug** key by default so that
-`./gradlew assembleRelease` produces something you can install and test
-immediately. Before publishing:
+`./gradlew assembleRelease` signs with a real key, not the debug one. Two
+untracked files at the repo root make that work:
 
-1. Create a release keystore and add a real `signingConfig` in
-   `app/build.gradle.kts`, replacing
-   `signingConfig = signingConfigs.getByName("debug")`.
-2. Add that keystore's SHA-1 **and** the Play App Signing SHA-1 (Play Console →
-   *Setup → App signing*) to the Firebase Android app, otherwise sign-in will
-   fail only for installs from the Play Store.
+| File | What it is |
+|---|---|
+| `ponder-release.jks` | the keystore itself — a PKCS#12 file holding one RSA-2048 key, alias `ponder`, valid until 2054 |
+| `keystore.properties` | where the build reads its path and passwords from (`keystore.properties.example` shows the format) |
+
+Both are in `.gitignore` and **neither is in the repository**, on purpose:
+anyone holding them can publish an update that Android accepts as genuinely
+yours.
+
+> **Back them up now**, somewhere private — a password manager, an encrypted
+> drive. Android identifies an app by its signing certificate, so if you lose
+> this key you can never ship an update that installs over the current one; the
+> only way forward is a new app id and everyone reinstalling from scratch.
+
+Its fingerprint, the one to register in Firebase:
+
+```
+SHA-1   BE:9E:69:9A:26:A0:DF:3D:41:38:98:D0:37:F3:0C:94:6E:83:16:F8
+SHA-256 F6:1D:41:28:74:DA:FC:8B:3F:4A:3E:29:79:D9:94:FC:22:B1:7A:9F:4A:33:D3:A6:C1:98:DB:C0:0F:10:78:ED
+```
+
+Read them back at any time with:
+
+```bash
+keytool -list -v -keystore ponder-release.jks -alias ponder
+```
+
+Delete `keystore.properties` and release builds fall back to the debug key —
+still installable, just not something to publish, and matching the *debug* SHA-1
+in Firebase rather than the release one.
+
+### Releasing to the Play Store
+
+1. Build an App Bundle rather than an APK: `./gradlew bundleRelease`.
+2. Play re-signs your upload with its own key. Add the **Play App Signing** SHA-1
+   (Play Console → *Setup → App signing*) to the Firebase Android app too,
+   otherwise sign-in works everywhere except installs from the Play Store.
 3. Download the refreshed `google-services.json` and replace the one in `app/`.
+4. Two things in this build need a word in the Play Console listing: the
+   `specialUse` foreground service (declare it under *App content → Foreground
+   service permissions*, describing it as keeping a user-authored quote in the
+   notification shade) and `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. If either is
+   more trouble than it is worth for a personal build, turn **Keep running in the
+   background** off in ⚙️ Settings and drop both from the manifest — the
+   notification itself keeps working without them.
 
 A 512×512 Play Store icon is generated alongside the launcher icons; see
 `docs/` in the build output or regenerate it from `app/src/main/res` artwork.
+
+---
+
+## Turning on the notification thought
+
+Nothing to configure in a console for this one — it is all on the phone, and the
+app asks for what it needs. Three things are worth knowing:
+
+1. **The notification permission.** On Android 13 and newer the app asks once, on
+   first launch. Say yes. Said no by accident? ⚙️ Settings → *Thought in the
+   notification bar* shows the problem and takes you to the system screen.
+2. **Battery.** ⚙️ Settings → *Battery* → **Allow background activity**. Android
+   otherwise puts unused apps to sleep, which can leave the shade empty for a
+   while after you swipe. The row says *"Background activity is allowed ✓"* once
+   it is done.
+3. **Aggressive OEM battery managers.** Samsung, Xiaomi, Oppo, Vivo, Huawei and
+   others kill background apps beyond what stock Android does, and they ignore
+   the setting above. On those phones also open **Settings → Apps → Ponder** and
+   set battery usage to *Unrestricted*, and add Ponder to any "protected" or
+   "auto-start" allow-list the phone offers. <https://dontkillmyapp.com> has the
+   exact steps per manufacturer.
+
+None of this is required for the feature to work — the notification re-posts
+itself from a broadcast receiver, which needs no running process — but it is what
+makes it instant rather than occasionally delayed.
+
+The one thing no app can work around: if you **force-stop** Ponder from system
+settings, Android blocks all of its receivers until you open it again. That is by
+design and applies to every app on the phone.
 
 ---
 
@@ -104,6 +177,11 @@ A 512×512 Play Store icon is generated alongside the launcher icons; see
 | "No Google account is available on this device" | Add a Google account in Android Settings. Emulators without Play Services can't do Google sign-in at all. |
 | "Couldn't load your data" | The Firestore rules aren't published, or there's no connection. Entries you already have stay readable from the cache. |
 | Sign-in works, but no entries appear | You signed in with a different Google account than the one used on the web. |
+| "This app build isn't registered", but only on the APK you sideloaded | You registered the *debug* SHA-1 and not the release one, or the other way round. Both are in step 1 above; add whichever is missing. |
+| No thought in the notification shade | Open ⚙️ Settings. It tells you which of the three it is: notifications blocked by Android, the toggle off, or no entries yet to draw from. |
+| The next thought is slow to appear after a swipe | Battery optimisation. See *Turning on the notification thought* above — and if it is a Samsung/Xiaomi/Oppo/Vivo/Huawei, the OEM battery manager as well. |
+| The thought stopped changing altogether | Ponder was force-stopped (system settings, or "close" from a task killer). Open the app once and it resumes. |
+| A permanent "Ponder is running" entry you'd rather not have | ⚙️ Settings → *Keep running in the background* → off. The thought and its swipe-for-the-next-one keep working; it just loses the safety net on phones that kill background apps. |
 
 ## Checking a release build
 
@@ -119,13 +197,15 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources \
 configuration error that looks exactly like the app was never registered —
 check that `app/src/main/res/raw/keep.xml` is still present.
 
-Both the debug and release builds are signed with the same debug key by
-default, so one SHA-1 covers both. You can confirm what actually signed an APK
-with:
+Debug and release are signed with *different* keys, so confirm which certificate
+actually signed an APK before blaming Firebase:
 
 ```bash
 $ANDROID_HOME/build-tools/*/apksigner verify --print-certs <apk>
 ```
+
+The SHA-1 it prints has to be one of the fingerprints registered on the Firebase
+Android app. A release APK should print `be9e699a…`.
 
 ---
 

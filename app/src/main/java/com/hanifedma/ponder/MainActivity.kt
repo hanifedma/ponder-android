@@ -1,10 +1,14 @@
 package com.hanifedma.ponder
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,10 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hanifedma.ponder.i18n.Tr
+import com.hanifedma.ponder.notify.BatteryPolicy
 import com.hanifedma.ponder.ui.HomeCallbacksFactory
 import com.hanifedma.ponder.ui.Mode
 import com.hanifedma.ponder.ui.PonderViewModel
@@ -68,6 +74,17 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) consumeSharedText(intent)
 
         setContent { PonderRoot(viewModel) }
+    }
+
+    /**
+     * Coming to the foreground is the one moment Android reliably allows a
+     * foreground service to be started, so it is where a keep-alive service that
+     * was killed while the app was away gets brought back. It is also when to
+     * re-read permissions the person may have just changed in system settings.
+     */
+    override fun onStart() {
+        super.onStart()
+        viewModel.onAppForeground()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -122,6 +139,29 @@ private fun PonderRoot(viewModel: PonderViewModel) {
         val exportLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument("application/pdf")
         ) { uri -> uri?.let(viewModel::exportTo) }
+
+        // Android 13+ will not show a single notification until this is granted,
+        // so it is asked for once, as soon as there is a screen behind it.
+        val notificationPermission = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { viewModel.onNotificationPermissionResult() }
+
+        LaunchedEffect(state.booting) {
+            if (state.booting) return@LaunchedEffect
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+            if (!viewModel.shouldAskNotificationPermission()) return@LaunchedEffect
+            val granted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+            viewModel.onNotificationPermissionAsked()
+            if (granted) {
+                viewModel.onNotificationPermissionResult()
+            } else {
+                runCatching {
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
 
         val showMessage: (String) -> Unit = { message ->
             scope.launch { snackbarHostState.showSnackbar(message) }
@@ -213,8 +253,23 @@ private fun PonderRoot(viewModel: PonderViewModel) {
                 SettingsDialog(
                     startupSpaceKey = state.startupSpaceKey,
                     defaultSort = state.defaultSort,
+                    notifyEnabled = state.notifyEnabled,
+                    notifySpaceKey = state.notifySpaceKey,
+                    keepAlive = state.keepAlive,
+                    notifyBlocked = state.notifyBlocked,
+                    notifyPoolCount = state.notifyPoolCount,
+                    batteryUnrestricted = state.batteryUnrestricted,
                     onSetStartupSpace = viewModel::setStartupSpace,
                     onSetDefaultSort = viewModel::setDefaultSort,
+                    onSetNotifyEnabled = viewModel::setNotifyEnabled,
+                    onSetNotifySpace = viewModel::setNotifySpace,
+                    onSetKeepAlive = viewModel::setKeepAlive,
+                    onOpenNotificationSettings = {
+                        if (!openNotificationSettings(context)) showMessage(tr("err.noScreen"))
+                    },
+                    onAllowBackground = {
+                        if (!requestBackgroundAllowance(context)) showMessage(tr("err.noScreen"))
+                    },
                     onClose = viewModel::closeSettings,
                 )
             }
@@ -259,6 +314,44 @@ private fun openExternally(context: Context, url: String): Boolean = try {
         Intent(Intent.ACTION_VIEW, Uri.parse(url))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     )
+    true
+} catch (e: ActivityNotFoundException) {
+    false
+} catch (e: SecurityException) {
+    false
+}
+
+/**
+ * Ponder's own page in the system notification settings — the only place a
+ * system-level block on its notifications can be lifted.
+ */
+private fun openNotificationSettings(context: Context): Boolean {
+    val intents = buildList {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            add(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            )
+        }
+        // Pre-Oreo, and as a fallback wherever the screen above is missing.
+        add(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", context.packageName, null))
+        )
+    }
+    return intents.any { startExternal(context, it) }
+}
+
+/**
+ * Asks Android to stop putting Ponder to sleep. The one-tap dialog is not
+ * present on every build, so the full battery-optimisation list backs it up.
+ */
+private fun requestBackgroundAllowance(context: Context): Boolean =
+    startExternal(context, BatteryPolicy.requestIntent(context)) ||
+        startExternal(context, BatteryPolicy.settingsIntent())
+
+private fun startExternal(context: Context, intent: Intent): Boolean = try {
+    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     true
 } catch (e: ActivityNotFoundException) {
     false

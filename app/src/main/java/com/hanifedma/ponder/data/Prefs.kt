@@ -3,6 +3,7 @@ package com.hanifedma.ponder.data
 import android.content.Context
 import com.hanifedma.ponder.core.SortOrder
 import com.hanifedma.ponder.i18n.Lang
+import com.hanifedma.ponder.notify.ThoughtPool
 
 /**
  * The handful of settings the app remembers between launches — the same ones the
@@ -51,6 +52,48 @@ class Prefs(context: Context) {
         get() = SortOrder.from(sp.getString(KEY_DEFAULT_SORT, null))
         set(value) = sp.edit().putString(KEY_DEFAULT_SORT, value.key).apply()
 
+    // -------------------------------------------------------- notifications
+
+    /**
+     * Whether a thought sits in the notification shade. On by default — it is
+     * the point of the feature — but it stays inert until the person also grants
+     * the notification permission Android 13+ asks for.
+     */
+    var notificationsEnabled: Boolean
+        get() = sp.getBoolean(KEY_NOTIFY, true)
+        set(value) = sp.edit().putBoolean(KEY_NOTIFY, value).apply()
+
+    /**
+     * Whether Ponder keeps a foreground service alive so it comes back after a
+     * reboot and survives a swipe out of recents. Costs a second, silent status
+     * notification, so it is a choice rather than a given.
+     */
+    var keepAlive: Boolean
+        get() = sp.getBoolean(KEY_KEEP_ALIVE, true)
+        set(value) = sp.edit().putBoolean(KEY_KEEP_ALIVE, value).apply()
+
+    /** Which space the notification draws from, or [ThoughtPool.ALL_SPACES]. */
+    var notifySpaceKey: String
+        get() = sp.getString(KEY_NOTIFY_SPACE, ThoughtPool.ALL_SPACES) ?: ThoughtPool.ALL_SPACES
+        set(value) = sp.edit().putString(KEY_NOTIFY_SPACE, value).apply()
+
+    /**
+     * The thought currently in the shade, as `Thought.key`. Persisted rather than
+     * kept in memory because the process is usually long gone by the time the
+     * notification is swiped away, and the next one still has to differ.
+     */
+    var currentThoughtKey: String?
+        get() = sp.getString(KEY_CURRENT_THOUGHT, null)
+        set(value) = sp.edit().putString(KEY_CURRENT_THOUGHT, value).apply()
+
+    /**
+     * Set once the notification permission has been asked for, so a "no" is
+     * respected instead of re-prompted on every launch.
+     */
+    var notifyPermissionAsked: Boolean
+        get() = sp.getBoolean(KEY_NOTIFY_ASKED, false)
+        set(value) = sp.edit().putBoolean(KEY_NOTIFY_ASKED, value).apply()
+
     /**
      * Set once the user picks "use on this device without an account", so
      * relaunching goes straight back to their entries instead of asking again.
@@ -81,5 +124,10 @@ class Prefs(context: Context) {
         private const val KEY_DEFAULT_SORT = "default_sort"
         private const val KEY_LOCAL_MODE = "prefers_local_mode"
         private const val KEY_MIGRATED_PREFIX = "migration_offered_"
+        private const val KEY_NOTIFY = "notify_enabled"
+        private const val KEY_KEEP_ALIVE = "notify_keep_alive"
+        private const val KEY_NOTIFY_SPACE = "notify_space"
+        private const val KEY_CURRENT_THOUGHT = "notify_current"
+        private const val KEY_NOTIFY_ASKED = "notify_permission_asked"
     }
 }

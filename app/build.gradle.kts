@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -12,6 +14,22 @@ val firebaseConfigured = googleServicesJson.exists()
 if (firebaseConfigured) {
     apply(plugin = "com.google.gms.google-services")
 }
+
+// The release signing key, described by an untracked keystore.properties at the
+// repo root (see keystore.properties.example). Kept out of this file and out of
+// git so the key and its passwords never end up in version control — but read
+// here rather than from the environment so a plain `./gradlew assembleRelease`
+// just works on the machine that holds them.
+//
+// Absent, the release build falls back to the debug key: still installable,
+// still testable, just not something to publish. Google sign-in is bound to
+// whichever certificate actually signs the APK, so the two cases need different
+// SHA-1 fingerprints registered in Firebase — see SETUP.md.
+val keystoreProperties = rootProject.file("keystore.properties").takeIf { it.exists() }
+    ?.let { file -> Properties().apply { file.inputStream().use { load(it) } } }
+val releaseKeystore = keystoreProperties?.getProperty("storeFile")
+    ?.let { rootProject.file(it) }
+    ?.takeIf { it.exists() }
 
 android {
     namespace = "com.hanifedma.ponder"
@@ -34,6 +52,21 @@ android {
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigured.toString())
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = keystoreProperties?.getProperty("storePassword")
+                keyAlias = keystoreProperties?.getProperty("keyAlias")
+                keyPassword = keystoreProperties?.getProperty("keyPassword")
+                // Both schemes: v1 keeps Android 6 and older able to install it,
+                // v2/v3 are what everything since verifies with.
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             optimization {
@@ -43,10 +76,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Signed with the debug key so `assembleRelease` produces an APK you
-            // can install and test immediately. Replace with your own keystore
-            // before publishing — see SETUP.md.
-            signingConfig = signingConfigs.getByName("debug")
+            // The real key when there is one, otherwise the debug key — so
+            // `assembleRelease` always produces an APK you can install and test.
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

@@ -59,6 +59,13 @@ Everything the web app does:
 
 Plus things that only make sense on a phone:
 
+- **A thought in your notification shade.** Shuffle, but always on: one of your
+  own entries sits in the notification bar, readable straight from the lock
+  screen. Swipe it away and the next random one takes its place — the only thing
+  that ever changes it. It is silent and low-priority, so it never interrupts and
+  Do Not Disturb has nothing to suppress; it comes back after a reboot, survives
+  clearing recent apps, and needs no connection. Pick which section it draws from
+  in ⚙️ Settings, or turn it off there.
 - **Share into Ponder.** Select text anywhere in Android and share it — or use
   *Process text* — and it lands in the composer, with the page title as the source.
 - **Adaptive layout.** One reading column on a phone; on a tablet the composer and
@@ -99,9 +106,13 @@ No cable? Build the APK and copy it across instead:
 ```
 
 Send that file to the phone however you like and open it; Android will ask once
-for permission to install apps from that source. Both builds are signed with the
-same debug key, so installing one over the other keeps your entries — switching
-between them would not.
+for permission to install apps from that source.
+
+The release build is signed with the key described by `keystore.properties` (see
+[SETUP.md](SETUP.md)), and the debug build with the debug key. Android treats
+those as two different apps: installing one over the other fails, and you have to
+uninstall first — which takes any device-only entries with it. Pick one and stay
+on it. Entries in a signed-in account are safe either way.
 
 ---
 
@@ -124,6 +135,14 @@ app/src/main/java/com/hanifedma/ponder/
 │   ├── LocalStore.kt          device-only JSON store, atomic writes
 │   ├── Prefs.kt               theme / language / active space / startup + sort defaults
 │   └── NetworkMonitor.kt      drives the "offline" pill
+├── notify/                  the thought that lives in the notification shade
+│   ├── Notifications.kt       every decision the feature makes, in one place
+│   ├── ThoughtPool.kt         the on-disk snapshot it draws from + the random pick
+│   ├── ThoughtNotifier.kt     channels, and building the notification itself
+│   ├── ThoughtReceiver.kt     a dismissal → the next thought
+│   ├── BootReceiver.kt        reboot / app update → put it back
+│   ├── ThoughtService.kt      optional keep-alive foreground service
+│   └── BatteryPolicy.kt       reports and asks about Doze exemption
 ├── auth/AuthManager.kt      Credential Manager → Firebase Auth
 ├── pdf/PdfExporter.kt       A4 export with pagination and thumbnails
 ├── i18n/Strings.kt          the EN/KO dictionary, keys shared with the web app

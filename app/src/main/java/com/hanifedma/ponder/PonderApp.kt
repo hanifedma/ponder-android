@@ -8,6 +8,7 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.hanifedma.ponder.notify.ThoughtNotifier
 import okio.Path.Companion.toOkioPath
 
 /**
@@ -19,6 +20,15 @@ import okio.Path.Companion.toOkioPath
  * internet friendly" behaviour the web app aims for.
  */
 class PonderApp : Application(), SingletonImageLoader.Factory {
+
+    override fun onCreate() {
+        super.onCreate()
+        // Every way into this process — the launcher, a swipe on the thought
+        // notification, a boot broadcast — arrives here first, so this is the one
+        // place the channels are guaranteed to exist before anything posts.
+        // Creating them is idempotent and does not itself show anything.
+        ThoughtNotifier.ensureChannels(this)
+    }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
