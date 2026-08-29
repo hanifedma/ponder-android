@@ -181,6 +181,7 @@ design and applies to every app on the phone.
 | No thought in the notification shade | Open ⚙️ Settings. It tells you which of the three it is: notifications blocked by Android, the toggle off, or no entries yet to draw from. |
 | The next thought is slow to appear after a swipe | Battery optimisation. See *Turning on the notification thought* above — and if it is a Samsung/Xiaomi/Oppo/Vivo/Huawei, the OEM battery manager as well. |
 | The thought stopped changing altogether | Ponder was force-stopped (system settings, or "close" from a task killer). Open the app once and it resumes. |
+| It shows in the shade but not on the lock screen | Check **Settings → Notifications → Notifications on lock screen** and pick the option that *includes silent notifications*. Xiaomi/HyperOS, Redmi and POCO hide the silent section there by default, where stock Android and Samsung One UI show it. Ponder's channel sits at normal importance precisely so it isn't caught by that filter, so if this still happens the phone-level setting is the place to look. |
 | A permanent "Ponder is running" entry you'd rather not have | ⚙️ Settings → *Keep running in the background* → off. The thought and its swipe-for-the-next-one keep working; it just loses the safety net on phones that kill background apps. |
 
 ## Checking a release build

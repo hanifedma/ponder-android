@@ -31,9 +31,23 @@ import com.hanifedma.ponder.i18n.Tr
  */
 object ThoughtNotifier {
 
-    /** Bumping a channel id is the only way to change its importance later. */
-    const val CHANNEL_THOUGHTS = "ponder.thoughts.v1"
+    /**
+     * A channel's importance is fixed once it has been created, so correcting it
+     * means a new id — and deleting the old one, or it lingers in the system
+     * notification settings as a second, dead entry. [RETIRED_CHANNELS] is that
+     * graveyard; add to it rather than reusing an id.
+     */
+    const val CHANNEL_THOUGHTS = "ponder.thoughts.v2"
     const val CHANNEL_KEEP_ALIVE = "ponder.keepalive.v1"
+
+    /**
+     * v1 was IMPORTANCE_LOW. Android files anything below IMPORTANCE_DEFAULT in
+     * the shade's "silent" section, and several OEM skins — HyperOS and MIUI
+     * among them — hide that whole section from the lock screen by default.
+     * Stock Android and One UI show it, which is why this only went wrong on
+     * some phones.
+     */
+    private val RETIRED_CHANNELS = listOf("ponder.thoughts.v1")
 
     const val ID_THOUGHT = 4101
     const val ID_KEEP_ALIVE = 4102
@@ -50,13 +64,18 @@ object ThoughtNotifier {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val tr = Tr(Prefs(context).lang)
 
-        // IMPORTANCE_LOW: no sound, no heads-up, no interruption — but still
-        // shown in the shade and on the lock screen, which is the whole point.
-        // It also means Do Not Disturb has nothing to suppress.
+        // IMPORTANCE_DEFAULT, then silence taken away piece by piece: no sound,
+        // no vibration, no light. Importance is what decides whether the lock
+        // screen shows this at all, so it has to stay at DEFAULT — quietness is
+        // a separate question, and the answer to it is the four setters below.
+        //
+        // DEFAULT still does not peek: heads-up needs IMPORTANCE_HIGH. So this
+        // appears, silently, and interrupts nothing — including under Do Not
+        // Disturb, which has no sound of ours to suppress.
         val thoughts = NotificationChannel(
             CHANNEL_THOUGHTS,
             tr("notify.channel.thoughts"),
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
             description = tr("notify.channel.thoughts.desc")
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
@@ -81,6 +100,11 @@ object ThoughtNotifier {
 
         runCatching { nm.createNotificationChannels(listOf(thoughts, keepAlive)) }
             .onFailure { Log.e(TAG, "Could not create the notification channels", it) }
+
+        // Upgrades only: on a fresh install there is nothing here to remove.
+        for (id in RETIRED_CHANNELS) {
+            runCatching { nm.deleteNotificationChannel(id) }
+        }
     }
 
     // -------------------------------------------------------------- posting
@@ -148,8 +172,18 @@ object ThoughtNotifier {
             // Readable on the lock screen rather than hidden behind "1 new".
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setSilent(true)
+            // Matches the channel's DEFAULT importance, which is what Android 7
+            // and 8.0-below-O-devices read instead. PRIORITY_LOW would put it in
+            // the same "silent" bucket the channel deliberately avoids.
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            // Silence spelled out rather than via setSilent(), which additionally
+            // drops the notification into an implicit group with GROUP_ALERT_
+            // SUMMARY and no summary to alert — a rendering quirk waiting to
+            // happen. On Oreo and up the channel wins anyway; these are for
+            // older devices, where they are the only say we get.
+            .setSound(null)
+            .setVibrate(null)
+            .setDefaults(0)
             // Not ongoing, so it can be swiped away — that swipe is the feature.
             .setOngoing(false)
             // Not auto-cancel, so tapping opens the app *and* leaves the thought
@@ -171,10 +205,15 @@ object ThoughtNotifier {
             .setColor(ACCENT)
             .setContentTitle(tr("notify.keepAlive.title"))
             .setContentText(tr("notify.keepAlive.text"))
+            // Deliberately the opposite of the thought above: as far out of the
+            // way as a foreground service notification is allowed to be, and off
+            // the lock screen entirely.
             .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setSilent(true)
+            .setSound(null)
+            .setVibrate(null)
+            .setDefaults(0)
             .setOngoing(true)
             .setShowWhen(false)
             .setLocalOnly(true)
