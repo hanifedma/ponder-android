@@ -23,6 +23,10 @@ data class WidgetLayout(
     val bodyMaxLines: Int,
     val metaTextSp: Float,
     val paddingDp: Int,
+    /** Side of the square shuffle button. All of it is the tap target. */
+    val buttonDp: Int,
+    /** Its edge-to-glyph padding, which is also what gives it that size. */
+    val buttonInsetDp: Int,
 )
 
 object WidgetSizing {
@@ -38,11 +42,24 @@ object WidgetSizing {
     const val MIN_WIDTH_DP = 110
 
     /**
-     * The shuffle button's fixed size. It, not the label beside it, is what sets
-     * the header's height — leaving it out of the budget below would promise the
-     * body a row it does not have.
+     * The shuffle glyph itself. Must match the intrinsic size in
+     * `ic_widget_shuffle.xml`, because the button is an ImageView sized by its
+     * drawable plus padding — see [buttonInsetDp].
      */
-    const val BUTTON_DP = 28
+    const val GLYPH_DP = 22
+
+    /**
+     * The shuffle button, near enough the 48dp Android asks for a touch target.
+     * It, not the label beside it, is what sets the header's height — leaving it
+     * out of the budget below would promise the body a row it does not have.
+     */
+    const val BUTTON_DP = 46
+
+    /**
+     * On a card too small to spend 46dp of it on chrome. Still half again the
+     * area of a 28dp button, and the quote keeps the rows it would have cost.
+     */
+    const val BUTTON_DP_COMPACT = 36
 
     /** Gap between the header and the body. */
     private const val HEADER_GAP_DP = 5
@@ -69,10 +86,12 @@ object WidgetSizing {
         val padding = if (w < 140 || h < 100) 10 else 14
         val metaSp = if (w < 160 || h < 100) 10.5f else 11.5f
         val bodySp = bodyTextSp(w, h, textLength)
+        val button = buttonDp(w, h)
 
         // The source is the first thing to go: it is the least of the three, and
-        // giving its rows to the quote is nearly always the better trade.
-        val showSource = hasSource && h >= 132
+        // giving its rows to the quote is nearly always the better trade — the
+        // more so now that the header spends what it does on a real tap target.
+        val showSource = hasSource && h >= 150
 
         // The line count depends on everything decided above, so the layout is
         // built once with a placeholder and then told how many lines it has.
@@ -84,9 +103,33 @@ object WidgetSizing {
             bodyMaxLines = 1,
             metaTextSp = metaSp,
             paddingDp = padding,
+            buttonDp = button,
+            buttonInsetDp = buttonInsetDp(button),
         )
         return draft.copy(bodyMaxLines = bodyMaxLines(h, draft, scale))
     }
+
+    /**
+     * How big to make the shuffle button.
+     *
+     * It is the one control the widget has, and a 28dp target was too small to
+     * hit comfortably — so it gets a proper one wherever the card can afford it,
+     * and shrinks only where those dp would otherwise come straight out of the
+     * quote. The threshold sits at the point where a full-size button would cost
+     * a line of text at the sizes people actually use.
+     */
+    fun buttonDp(widthDp: Int, heightDp: Int): Int =
+        if (heightDp < 140 || widthDp < 140) BUTTON_DP_COMPACT else BUTTON_DP
+
+    /**
+     * Padding from the button's edge to the glyph.
+     *
+     * This is how the button is sized at all: `RemoteViews` cannot change a
+     * view's width before Android 12, but it can always set padding, and an
+     * ImageView left to wrap its drawable grows with it. So the button is
+     * [GLYPH_DP] plus this on each side, on every version.
+     */
+    fun buttonInsetDp(buttonDp: Int): Int = ((buttonDp - GLYPH_DP) / 2).coerceAtLeast(0)
 
     /**
      * Type scales with the card, then again with how much there is to say: a
@@ -120,7 +163,7 @@ object WidgetSizing {
      */
     fun bodyMaxLines(heightDp: Int, layout: WidgetLayout, fontScale: Float): Int {
         val labelDp = layout.metaTextSp * fontScale * LINE_HEIGHT_RATIO
-        val headerDp = maxOf(labelDp, BUTTON_DP.toFloat()) + HEADER_GAP_DP
+        val headerDp = maxOf(labelDp, layout.buttonDp.toFloat()) + HEADER_GAP_DP
         val sourceDp = if (layout.showSource) {
             layout.metaTextSp * fontScale * LINE_HEIGHT_RATIO + SOURCE_GAP_DP
         } else {

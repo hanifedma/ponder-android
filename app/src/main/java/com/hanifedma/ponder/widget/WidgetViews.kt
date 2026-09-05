@@ -173,10 +173,11 @@ object WidgetViews {
             if (dark) R.drawable.widget_pill_dark else R.drawable.widget_pill_light,
         )
         views.setInt(R.id.widget_next, "setColorFilter", accentColor)
-        // Restated after the background: a drawable that carries its own padding
-        // replaces the view's, and re-asserting it is cheaper than depending on
-        // these two shapes never gaining one.
-        val glyphInset = BUTTON_INSET_DP.dp(context)
+        // This is also what sizes the button: the ImageView wraps its glyph, so
+        // the padding around it is the difference between a comfortable tap
+        // target and a cramped one. Set after the background on purpose — a
+        // drawable that carries its own padding replaces the view's.
+        val glyphInset = layout.buttonInsetDp.dp(context)
         views.setViewPadding(R.id.widget_next, glyphInset, glyphInset, glyphInset, glyphInset)
         views.setContentDescription(R.id.widget_next, tr("widget.next"))
 
@@ -289,9 +290,6 @@ object WidgetViews {
 
     /** Roughly the length of the empty-state sentence, for sizing purposes. */
     private const val EMPTY_STATE_LENGTH = 60
-
-    /** Inset from the shuffle button's edge to the glyph, matching the layout. */
-    private const val BUTTON_INSET_DP = 6
 
     /** More layouts than a launcher plausibly needs, and a limit the platform enforces. */
     private const val MAX_SIZE_VARIANTS = 4

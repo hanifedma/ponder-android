@@ -154,4 +154,70 @@ class WidgetSizingTest {
         val l = WidgetSizing.of(cells(4), cells(2), 0, false, 1f)
         assertTrue(l.bodyMaxLines >= 1)
     }
+
+    // -------------------------------------------------------- the one control
+
+    @Test
+    fun `the shuffle button is a real tap target wherever there is room`() {
+        // 28dp was too small to hit; nothing may quietly go back below this.
+        for (w in 2..6) {
+            for (h in 1..6) {
+                val l = WidgetSizing.of(cells(w), cells(h), 200, true, 1f)
+                assertTrue(
+                    "${l.buttonDp}dp button at ${w}x$h cells",
+                    l.buttonDp >= WidgetSizing.BUTTON_DP_COMPACT,
+                )
+            }
+        }
+        assertEquals(WidgetSizing.BUTTON_DP, layout(4, 3).buttonDp)
+    }
+
+    @Test
+    fun `a bigger widget never gets a smaller button`() {
+        var previous = 0
+        for (n in 1..8) {
+            val size = WidgetSizing.buttonDp(cells(n), cells(n))
+            assertTrue("$size after $previous at $n cells", size >= previous)
+            previous = size
+        }
+        assertEquals(WidgetSizing.BUTTON_DP, previous)
+    }
+
+    @Test
+    fun `the inset is exactly what makes the button that size`() {
+        // The button is the glyph plus this padding on each side — nothing sets
+        // its width — so a mismatch here is a mis-sized button, not a rounding.
+        for (side in listOf(WidgetSizing.BUTTON_DP_COMPACT, WidgetSizing.BUTTON_DP)) {
+            assertEquals(side, WidgetSizing.GLYPH_DP + 2 * WidgetSizing.buttonInsetDp(side))
+        }
+    }
+
+    @Test
+    fun `a button smaller than its glyph asks for no padding rather than negative`() {
+        assertEquals(0, WidgetSizing.buttonInsetDp(WidgetSizing.GLYPH_DP - 10))
+    }
+
+    @Test
+    fun `growing the button never costs the quote its last line`() {
+        for (w in 2..6) {
+            for (h in 1..6) {
+                for (scale in listOf(1f, 1.5f, 2f)) {
+                    val l = WidgetSizing.of(cells(w), cells(h), 400, true, scale)
+                    assertTrue("${w}x$h at ${scale}x", l.bodyMaxLines >= 1)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `a widget two rows tall always keeps two lines of quote`() {
+        // The button and the source line both compete with the quote for the
+        // same dp. Whatever they are set to, a card of this height owes the
+        // quote more than a single line — launchers report every height in
+        // this range, not just the ones the cell grid lands on.
+        for (h in 110..400 step 5) {
+            val l = WidgetSizing.of(250, h, 200, true, 1f)
+            assertTrue("only ${l.bodyMaxLines} line(s) at ${h}dp", l.bodyMaxLines >= 2)
+        }
+    }
 }

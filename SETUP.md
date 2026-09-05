@@ -172,7 +172,7 @@ design and applies to every app on the phone.
 Nothing to set up. Long-press an empty part of the home screen → **Widgets** →
 **Ponder**, and drag it where you want it.
 
-- **The shuffle button** in its top corner draws another quote. Nothing else
+- **The shuffle button** in its top corner draws another quote, and grows with the widget. Nothing else
   changes it — resizing, rotating, restarting the phone and switching theme all
   keep the one you were on.
 - **Tapping the card** opens the app.
