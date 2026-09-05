@@ -14,6 +14,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.hanifedma.ponder.MainActivity
 import com.hanifedma.ponder.R
 import com.hanifedma.ponder.data.Prefs
+import com.hanifedma.ponder.data.Thought
+import com.hanifedma.ponder.data.ThoughtPool
 import com.hanifedma.ponder.i18n.Tr
 
 /**

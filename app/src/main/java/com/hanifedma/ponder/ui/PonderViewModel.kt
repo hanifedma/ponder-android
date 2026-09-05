@@ -21,13 +21,14 @@ import com.hanifedma.ponder.data.NetworkMonitor
 import com.hanifedma.ponder.data.Prefs
 import com.hanifedma.ponder.data.Space
 import com.hanifedma.ponder.data.Spaces
+import com.hanifedma.ponder.data.ThoughtPool
 import com.hanifedma.ponder.i18n.Lang
 import com.hanifedma.ponder.i18n.Tr
 import com.hanifedma.ponder.notify.BatteryPolicy
 import com.hanifedma.ponder.notify.Notifications
 import com.hanifedma.ponder.notify.ThoughtNotifier
-import com.hanifedma.ponder.notify.ThoughtPool
 import com.hanifedma.ponder.pdf.PdfExporter
+import com.hanifedma.ponder.widget.PonderWidgets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -87,6 +88,10 @@ data class PonderUiState(
     val notifyBlocked: Boolean = false,
     /** How many entries the notification currently has to choose between. */
     val notifyPoolCount: Int = 0,
+    /** At least one home-screen widget exists, so its setting is worth showing. */
+    val widgetPlaced: Boolean = false,
+    /** Space the widgets draw from, or [ThoughtPool.ALL_SPACES]. */
+    val widgetSpaceKey: String = ThoughtPool.ALL_SPACES,
     /** Android will not put Ponder to sleep to save battery. */
     val batteryUnrestricted: Boolean = true,
     val settingsOpen: Boolean = false,
@@ -147,6 +152,7 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
                 notifyEnabled = prefs.notificationsEnabled,
                 notifySpaceKey = prefs.notifySpaceKey,
                 keepAlive = prefs.keepAlive,
+                widgetSpaceKey = prefs.widgetSpaceKey,
                 composer = ComposerState(tag = startupSpace.defaultTag),
             )
         }
@@ -416,10 +422,14 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
             val count = withContext(Dispatchers.IO) {
                 ThoughtPool(app).count(prefs.notifySpaceKey)
             }
+            // Only worth a settings row once there is a widget for it to be
+            // about; before that it is a control for something invisible.
+            val widgets = withContext(Dispatchers.IO) { PonderWidgets.anyPlaced(app) }
             _state.value = _state.value.copy(
                 notifyBlocked = blocked,
                 batteryUnrestricted = battery,
                 notifyPoolCount = count,
+                widgetPlaced = widgets,
             )
         }
     }
@@ -475,10 +485,24 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
         Notifications.apply(getApplication(), allowServiceStart = true)
     }
 
+    /** [key] is a space key, or [ThoughtPool.ALL_SPACES]. */
+    fun setWidgetSpace(key: String) {
+        prefs.widgetSpaceKey = key
+        _state.value = _state.value.copy(widgetSpaceKey = key)
+        // Each widget keeps its quote unless the new filter excludes it, in
+        // which case the redraw replaces it — so narrowing to one section takes
+        // visible effect immediately rather than at the next shuffle.
+        PonderWidgets.refreshAll(getApplication())
+    }
+
     fun toggleTheme() {
         val dark = !_state.value.dark
         prefs.darkTheme = dark
         _state.value = _state.value.copy(dark = dark)
+        // The widget paints itself from this palette, and it is not redrawn by
+        // anything else — leave it out and the home screen keeps the old theme
+        // until the quote next changes.
+        PonderWidgets.refreshAll(getApplication())
     }
 
     fun toggleLang() {
@@ -486,8 +510,10 @@ class PonderViewModel(app: Application) : AndroidViewModel(app) {
         prefs.lang = next
         _state.value = _state.value.copy(lang = next)
         // The entry itself is never translated, but the section name and tag
-        // around it are — redraw so the shade doesn't stay in the old language.
+        // around it are — redraw so neither the shade nor the home screen is
+        // left in the old language.
         Notifications.refresh(getApplication())
+        PonderWidgets.refreshAll(getApplication())
     }
 
     fun setComposerText(value: String) {

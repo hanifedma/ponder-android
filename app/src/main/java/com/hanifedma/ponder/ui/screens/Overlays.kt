@@ -51,7 +51,7 @@ import com.hanifedma.ponder.data.Entry
 import com.hanifedma.ponder.data.Prefs
 import com.hanifedma.ponder.data.Space
 import com.hanifedma.ponder.data.Spaces
-import com.hanifedma.ponder.notify.ThoughtPool
+import com.hanifedma.ponder.data.ThoughtPool
 import com.hanifedma.ponder.ui.ShuffleState
 import com.hanifedma.ponder.ui.components.ButtonVariant
 import com.hanifedma.ponder.ui.components.EntryFooter
@@ -427,12 +427,15 @@ fun SettingsDialog(
     keepAlive: Boolean,
     notifyBlocked: Boolean,
     notifyPoolCount: Int,
+    widgetPlaced: Boolean,
+    widgetSpaceKey: String,
     batteryUnrestricted: Boolean,
     onSetStartupSpace: (String) -> Unit,
     onSetDefaultSort: (SortOrder) -> Unit,
     onSetNotifyEnabled: (Boolean) -> Unit,
     onSetNotifySpace: (String) -> Unit,
     onSetKeepAlive: (Boolean) -> Unit,
+    onSetWidgetSpace: (String) -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onAllowBackground: () -> Unit,
     onClose: () -> Unit,
@@ -562,6 +565,32 @@ fun SettingsDialog(
                                 )
                             }
                         }
+                    }
+                }
+
+                // Only once there is a widget on a home screen: until then this
+                // would be a control for something the person cannot see.
+                if (widgetPlaced) {
+                    SettingDivider()
+
+                    SettingRow(
+                        label = tr("settings.widget"),
+                        hint = tr("settings.widget.hint"),
+                    ) {
+                        PonderSelect(
+                            selected = widgetSpaceKey,
+                            options = ThoughtPool.spaceFilterOptions,
+                            labelOf = { key ->
+                                if (key == ThoughtPool.ALL_SPACES) {
+                                    tr("settings.notify.source.all")
+                                } else {
+                                    tr("tab.$key", Spaces.byKey(key).fallbackName)
+                                }
+                            },
+                            onSelect = onSetWidgetSpace,
+                            contentDescription = tr("settings.widget"),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             }

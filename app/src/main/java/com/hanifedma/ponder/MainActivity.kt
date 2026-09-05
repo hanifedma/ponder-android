@@ -258,12 +258,15 @@ private fun PonderRoot(viewModel: PonderViewModel) {
                     keepAlive = state.keepAlive,
                     notifyBlocked = state.notifyBlocked,
                     notifyPoolCount = state.notifyPoolCount,
+                    widgetPlaced = state.widgetPlaced,
+                    widgetSpaceKey = state.widgetSpaceKey,
                     batteryUnrestricted = state.batteryUnrestricted,
                     onSetStartupSpace = viewModel::setStartupSpace,
                     onSetDefaultSort = viewModel::setDefaultSort,
                     onSetNotifyEnabled = viewModel::setNotifyEnabled,
                     onSetNotifySpace = viewModel::setNotifySpace,
                     onSetKeepAlive = viewModel::setKeepAlive,
+                    onSetWidgetSpace = viewModel::setWidgetSpace,
                     onOpenNotificationSettings = {
                         if (!openNotificationSettings(context)) showMessage(tr("err.noScreen"))
                     },

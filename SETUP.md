@@ -167,6 +167,31 @@ design and applies to every app on the phone.
 
 ---
 
+## Adding the home-screen widget
+
+Nothing to set up. Long-press an empty part of the home screen → **Widgets** →
+**Ponder**, and drag it where you want it.
+
+- **The shuffle button** in its top corner draws another quote. Nothing else
+  changes it — resizing, rotating, restarting the phone and switching theme all
+  keep the one you were on.
+- **Tapping the card** opens the app.
+- **Drag its edges** to resize. It adapts as it grows: a small one is the quote
+  and the button, a larger one adds the section name, the tag and the source, and
+  fits more lines. Text scales with both the widget and the length of the entry,
+  so short quotes are set large and long ones shrink to fit rather than being cut.
+- **Add more than one.** Each keeps its own quote, so two widgets show two
+  different entries.
+- **⚙️ Settings → Home screen widget** picks which section they draw from. The row
+  only appears once you have placed a widget.
+
+The widget reads the same on-device snapshot the notification does, so it works
+with no connection and without being signed in. It refreshes whenever the app
+loads entries — so an entry added on another device shows up here after you next
+open Ponder.
+
+---
+
 ## Troubleshooting
 
 | What you see | What it means |
@@ -183,6 +208,9 @@ design and applies to every app on the phone.
 | The thought stopped changing altogether | Ponder was force-stopped (system settings, or "close" from a task killer). Open the app once and it resumes. |
 | It shows in the shade but not on the lock screen | Check **Settings → Notifications → Notifications on lock screen** and pick the option that *includes silent notifications*. Xiaomi/HyperOS, Redmi and POCO hide the silent section there by default, where stock Android and Samsung One UI show it. Ponder's channel sits at normal importance precisely so it isn't caught by that filter, so if this still happens the phone-level setting is the place to look. |
 | A permanent "Ponder is running" entry you'd rather not have | ⚙️ Settings → *Keep running in the background* → off. The thought and its swipe-for-the-next-one keep working; it just loses the safety net on phones that kill background apps. |
+| The widget says "Nothing saved here yet" | Either there are no entries at all, or ⚙️ Settings → *Home screen widget* is pointed at a section you have not put anything in yet. Tapping the widget opens the app so you can add one. |
+| The widget is stuck on one quote | That is deliberate: it changes when you press its shuffle button, and otherwise stays put. Resizing it, restarting the phone and switching theme all keep the quote you were on. |
+| The widget's text is cut off | Drag it larger, or shorten the entry. The type shrinks and the line count grows as the widget does, but there is a floor below which it would stop being readable. |
 
 ## Checking a release build
 

@@ -6,6 +6,9 @@ import android.os.Build
 import android.util.Log
 import com.hanifedma.ponder.data.Entry
 import com.hanifedma.ponder.data.Prefs
+import com.hanifedma.ponder.data.Thought
+import com.hanifedma.ponder.data.ThoughtPool
+import com.hanifedma.ponder.widget.PonderWidgets
 import java.util.concurrent.Executors
 
 /**
@@ -83,6 +86,7 @@ object Notifications {
             ThoughtPool(it).clear()
             Prefs(it).currentThoughtKey = null
             ThoughtNotifier.cancel(it)
+            PonderWidgets.onPoolChanged(it)
         }
     }
 
@@ -90,6 +94,10 @@ object Notifications {
      * Called by the app whenever a space's entries load, so the pool the
      * background code draws from stays current without it ever needing the
      * network or an account.
+     *
+     * The pool feeds the home-screen widget as well as the shade, and this is
+     * its only writer — so the widget is told from here rather than from the
+     * caller, which would otherwise have to guess when the write had landed.
      */
     fun updatePool(context: Context, spaceKey: String, entries: List<Entry>) {
         val app = context.applicationContext
@@ -98,6 +106,7 @@ object Notifications {
             // A first entry should light the notification up straight away, and a
             // deleted one should be replaced rather than left dangling.
             ensureBlocking(it)
+            PonderWidgets.onPoolChanged(it)
         }
     }
 

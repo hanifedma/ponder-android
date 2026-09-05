@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The home-screen widget.
+
+  Everything variable — colours, text sizes, line counts, which parts are
+  visible at all — is applied from WidgetViews at update time, because a widget
+  has no idea how big it will be until the launcher says so. What lives here is
+  only the structure that never changes.
+
+  Only views RemoteViews can inflate are used: LinearLayout, TextView,
+  ImageView. Sizes are start/end rather than left/right so a right-to-left
+  launcher mirrors it correctly.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_card"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg_dark"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:baselineAligned="false">
+
+        <!--
+          Carries the section name and the tag as one styled string, so the row
+          needs no spacer view: the weight keeps the shuffle button pinned to the
+          end even when the label is empty on a narrow widget.
+        -->
+        <TextView
+            android:id="@+id/widget_meta"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="11.5sp"
+            android:includeFontPadding="false" />
+
+        <ImageView
+            android:id="@+id/widget_next"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:padding="6dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_shuffle"
+            android:background="@drawable/widget_pill_dark"
+            android:contentDescription="@string/widget_next" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_body"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="5dp"
+        android:gravity="top|start"
+        android:ellipsize="end"
+        android:textSize="16sp"
+        android:lineSpacingMultiplier="1.15" />
+
+    <TextView
+        android:id="@+id/widget_source"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textSize="11.5sp"
+        android:includeFontPadding="false" />
+</LinearLayout>

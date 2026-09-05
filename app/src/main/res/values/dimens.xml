@@ -1,0 +1,6 @@
+<resources>
+    <!-- Widget corner radius. Android 12 exposes the launcher's own value, so a
+         Ponder widget takes the same shape as everything beside it; before that
+         there is nothing to ask, and 16dp matches the app's card radius. -->
+    <dimen name="widget_radius">16dp</dimen>
+</resources>

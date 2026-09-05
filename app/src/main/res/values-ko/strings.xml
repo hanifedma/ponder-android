@@ -1,0 +1,9 @@
+<resources>
+    <!-- Only what the system itself draws — the share sheet entry and the widget
+         picker — needs translating here. The widget's own contents follow the
+         app's 🌐 toggle rather than the device language, and live in
+         i18n/Strings.kt. -->
+    <string name="share_target_label">Ponder에 저장</string>
+    <string name="widget_description">저장한 명언·생각·건강 팁을 홈 화면에 하나씩 보여줍니다. 셔플 버튼을 누르면 다음 항목이 나옵니다.</string>
+    <string name="widget_next">다른 항목 보기</string>
+</resources>

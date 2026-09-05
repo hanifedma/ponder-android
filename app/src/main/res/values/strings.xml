@@ -1,7 +1,15 @@
 <resources>
-    <!-- The launcher label. Everything else the user reads is translated in
-         app code (i18n/Strings.kt) so the in-app 🌐 toggle can switch the whole
-         interface instantly, exactly like the web app. -->
-    <string name="app_name">Ponder</string>
+    <!-- The launcher label. Everything else the user reads *inside* the app is
+         translated in app code (i18n/Strings.kt) so the in-app 🌐 toggle can
+         switch the whole interface instantly, exactly like the web app. -->
+    <string name="app_name" translatable="false">Ponder</string>
     <string name="share_target_label">Save to Ponder</string>
+
+    <!-- The widget picker and the share sheet are drawn by the system, before
+         Ponder has any say, so these have to be real Android resources and
+         follow the *device* language rather than the app's own toggle.
+         Everything inside the widget itself is set from i18n/Strings.kt. -->
+    <string name="widget_label" translatable="false">Ponder</string>
+    <string name="widget_description">One of your quotes, thoughts or tips on the home screen. Tap the shuffle button for another.</string>
+    <string name="widget_next">Show another</string>
 </resources>

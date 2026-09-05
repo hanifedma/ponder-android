@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sizing is stated three ways because launchers read different ones:
+
+  - targetCellWidth/Height (Android 12+) is the modern, grid-aware default —
+    4x2 is the shape a quote reads best in, a wide band rather than a square.
+  - minWidth/minHeight are the pre-12 equivalent, on the 70dp grid (70n - 30).
+  - minResizeWidth/Height are how far down a person may drag it afterwards.
+    70dp is the floor at which a header row and a readable line of text still
+    coexist; below that the widget would only be able to lie about its content.
+
+  maxResize is deliberately generous so a tablet can give it a whole column.
+  updatePeriodMillis is 0: nothing here polls. The quote changes when it is
+  asked to change, exactly like the notification.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="70dp"
+    android:maxResizeWidth="640dp"
+    android:maxResizeHeight="640dp"
+    android:updatePeriodMillis="0"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_thought"
+    android:previewLayout="@layout/widget_preview"
+    android:previewImage="@drawable/widget_preview_image"
+    android:description="@string/widget_description" />

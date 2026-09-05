@@ -66,6 +66,12 @@ Plus things that only make sense on a phone:
   Do Not Disturb has nothing to suppress; it comes back after a reboot, survives
   clearing recent apps, and needs no connection. Pick which section it draws from
   in ⚙️ Settings, or turn it off there.
+- **A home-screen widget.** The same idea on the home screen: one entry on a
+  card, with a shuffle button for the next. Resizable from a 2x1 strip to
+  whatever a tablet will give it — the type, the number of lines, and whether the
+  section name, tag and source appear are all worked out from the space it
+  actually has, so it stays readable at every size and at any system font scale.
+  Each widget keeps its own quote, so two of them show two different things.
 - **Share into Ponder.** Select text anywhere in Android and share it — or use
   *Process text* — and it lands in the composer, with the page title as the source.
 - **Adaptive layout.** One reading column on a phone; on a tablet the composer and
@@ -134,15 +140,22 @@ app/src/main/java/com/hanifedma/ponder/
 │   ├── CloudStore.kt          Firestore — the same documents as the web app
 │   ├── LocalStore.kt          device-only JSON store, atomic writes
 │   ├── Prefs.kt               theme / language / active space / startup + sort defaults
+│   ├── ThoughtPool.kt         the entry snapshot the shade and the widget read,
+│   │                          plus the random pick they share — unit tested
 │   └── NetworkMonitor.kt      drives the "offline" pill
 ├── notify/                  the thought that lives in the notification shade
 │   ├── Notifications.kt       every decision the feature makes, in one place
-│   ├── ThoughtPool.kt         the on-disk snapshot it draws from + the random pick
 │   ├── ThoughtNotifier.kt     channels, and building the notification itself
 │   ├── ThoughtReceiver.kt     a dismissal → the next thought
 │   ├── BootReceiver.kt        reboot / app update → put it back
 │   ├── ThoughtService.kt      optional keep-alive foreground service
 │   └── BatteryPolicy.kt       reports and asks about Doze exemption
+├── widget/                  the same thought, on the home screen
+│   ├── PonderWidget.kt        AppWidgetProvider: update, resize, shuffle, removal
+│   ├── PonderWidgets.kt       what each placed widget should be showing
+│   ├── WidgetViews.kt         building the RemoteViews the launcher draws
+│   ├── WidgetLayout.kt        what fits at a given size — pure, unit tested
+│   └── WidgetStore.kt         the quote each widget is currently on
 ├── auth/AuthManager.kt      Credential Manager → Firebase Auth
 ├── pdf/PdfExporter.kt       A4 export with pagination and thumbnails
 ├── i18n/Strings.kt          the EN/KO dictionary, keys shared with the web app

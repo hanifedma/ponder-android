@@ -1,7 +1,7 @@
 package com.hanifedma.ponder
 
-import com.hanifedma.ponder.notify.Thought
-import com.hanifedma.ponder.notify.ThoughtPool
+import com.hanifedma.ponder.data.Thought
+import com.hanifedma.ponder.data.ThoughtPool
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull

@@ -80,6 +80,22 @@
             android:name=".notify.ThoughtReceiver"
             android:exported="false" />
 
+        <!-- The home-screen widget. Exported because the launcher lives in
+             another process and has to be able to reach it; APPWIDGET_UPDATE is
+             a protected broadcast, and the shuffle action arrives only through
+             the widget's own PendingIntent. -->
+        <receiver
+            android:name=".widget.PonderWidget"
+            android:label="@string/widget_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ponder_widget_info" />
+        </receiver>
+
         <!-- Exported because that is the only way to be handed BOOT_COMPLETED.
              Every action below is a protected broadcast — the system is the only
              sender there is. -->

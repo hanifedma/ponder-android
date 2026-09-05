@@ -3,7 +3,6 @@ package com.hanifedma.ponder.data
 import android.content.Context
 import com.hanifedma.ponder.core.SortOrder
 import com.hanifedma.ponder.i18n.Lang
-import com.hanifedma.ponder.notify.ThoughtPool
 
 /**
  * The handful of settings the app remembers between launches — the same ones the
@@ -78,6 +77,19 @@ class Prefs(context: Context) {
         set(value) = sp.edit().putString(KEY_NOTIFY_SPACE, value).apply()
 
     /**
+     * Which space the home-screen widgets draw from, or [ThoughtPool.ALL_SPACES].
+     *
+     * Separate from [notifySpaceKey] on purpose: wanting quotes on the home
+     * screen and health tips in the shade is an entirely reasonable thing to
+     * want, and one setting could not express it. It is global rather than
+     * per-widget so it needs no configuration screen — each widget still keeps
+     * its own quote, so two of them show two different things.
+     */
+    var widgetSpaceKey: String
+        get() = sp.getString(KEY_WIDGET_SPACE, ThoughtPool.ALL_SPACES) ?: ThoughtPool.ALL_SPACES
+        set(value) = sp.edit().putString(KEY_WIDGET_SPACE, value).apply()
+
+    /**
      * The thought currently in the shade, as `Thought.key`. Persisted rather than
      * kept in memory because the process is usually long gone by the time the
      * notification is swiped away, and the next one still has to differ.
@@ -129,5 +141,6 @@ class Prefs(context: Context) {
         private const val KEY_NOTIFY_SPACE = "notify_space"
         private const val KEY_CURRENT_THOUGHT = "notify_current"
         private const val KEY_NOTIFY_ASKED = "notify_permission_asked"
+        private const val KEY_WIDGET_SPACE = "widget_space"
     }
 }

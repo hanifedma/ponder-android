@@ -1,15 +1,12 @@
-package com.hanifedma.ponder.notify
+package com.hanifedma.ponder.data
 
 import android.content.Context
 import android.util.Log
-import com.hanifedma.ponder.data.Entry
-import com.hanifedma.ponder.data.Space
-import com.hanifedma.ponder.data.Spaces
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** One entry, reduced to the fields a notification can show. */
+/** One entry, reduced to the fields a notification or a widget can show. */
 data class Thought(
     val spaceKey: String,
     val id: String,
@@ -22,13 +19,14 @@ data class Thought(
 }
 
 /**
- * The pool the notification draws from: a plain snapshot of the entries the app
- * last had on screen, per space, written to one small file.
+ * The pool the notification and the home-screen widget both draw from: a plain
+ * snapshot of the entries the app last had on screen, per space, in one small
+ * file.
  *
- * Notifications have to keep working after a reboot, with no network and with
- * the app never opened — so the background code deliberately does *not* reach
- * for Firestore or for whichever store happens to be active. It reads this file,
- * which the running app keeps up to date ([replace]) whenever entries load.
+ * Both surfaces have to keep working after a reboot, with no network and with
+ * the app never opened — so neither reaches for Firestore or for whichever store
+ * happens to be active. They read this file, which the running app keeps up to
+ * date ([replace]) whenever entries load.
  *
  * Callers build a throwaway instance wherever they need one, so every file
  * access takes the shared [LOCK] rather than the instance monitor — the app may
